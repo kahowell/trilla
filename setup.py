@@ -13,6 +13,7 @@ requirements = [
     'Click>=6.0',
     'python-bugzilla>=1.2.2',
     'py-trello>=0.5.0',
+    'PyGithub>=1.29',
     # TODO: put package requirements here
 ]
 

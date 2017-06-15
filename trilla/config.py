@@ -28,8 +28,10 @@ class Config(object):
         self.active_profile = active_profile
         self.target_board = "Testing Trilla"
         self.target_list = "TODO"
+        self.email_trello_user_map = {}
         self.trello = TrelloConfig()
         self.bzilla = BugzillaConfig()
+        self.github = GithubConfig()
 
         # If a config file exists, override existing.
         self._apply_file_values()
@@ -52,9 +54,9 @@ class Config(object):
         with open(TRILLA_CONFIG_FILE, 'r') as yaml_file:
             parsed_config = yaml.load(yaml_file)
             if not self.active_profile:
-                self.active_profile = _get("default_profile", parsed_config)
+                self.active_profile = parsed_config.get("default_profile", parsed_config.get("profiles", {}).keys()[0])
 
-            profiles = _get("profiles", parsed_config)
+            profiles = parsed_config.get("profiles", {})
             if not profiles or not self.active_profile in profiles.keys():
                 # TODO Try the default profile if one was configured.
                 # Nothing to do
@@ -66,7 +68,10 @@ class Config(object):
                 self.target_board = profile['target_board']
             if 'target_list' in profile:
                 self.target_list = profile['target_list']
+            self.email_trello_user_map = profile.get('email_trello_user_map', {})
             self.trello.apply(profile)
+            self.github.apply(profile)
+            self.bzilla.apply(profile)
 
     def _apply_env_values(self):
         # TODO Implment me!!!
@@ -88,10 +93,10 @@ class TrelloConfig(object):
         if not trello_conf:
             return
 
-        self.api_key = _get('api_key', trello_conf) or self.api_key
-        self.api_secret = _get('api_secret', trello_conf) or self.api_secret
-        self.oauth_token = _get('oauth_token', trello_conf) or self.oauth_token
-        self.oauth_token_secret = _get('oauth_token_secret', trello_conf) or self.oauth_token_secret
+        self.api_key = trello_conf.get('api_key', self.api_key)
+        self.api_secret = trello_conf.get('api_secret', self.api_secret)
+        self.oauth_token = trello_conf.get('oauth_token', self.oauth_token)
+        self.oauth_token_secret = trello_conf.get('oauth_token_secret', self.oauth_token_secret)
 
     def update(self, api_key=None, api_secret=None, oauth_token=None, oauth_token_secret=None):
         if api_key:
@@ -121,6 +126,23 @@ class BugzillaConfig(object):
     def update(self, url=None):
         if url:
             self.url = url
+
+
+class GithubConfig(object):
+    """Github connection config"""
+    def __init__(self):
+        self.token = None
+
+    def apply(self, profile_dict):
+        github_conf = profile_dict['github']
+        if not github_conf:
+            return
+
+        self.token = github_conf.get('token') or self.token
+
+    def update(self, token=None):
+        if token:
+            self.token = token
 
 
 def _get(name, config_dict, default_value=None):
